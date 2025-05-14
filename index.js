@@ -112,4 +112,41 @@ app.get("/bookings/:packageId", async (req,res) => {
     }
 })
 
+users = {
+  email: "user@example.com", 
+  password: "securePassword123"
+}
+
+const attempts = {};
+const jwt = require("jsonwebtoken")
+
+app.post("/login", async (req,res) => {
+    let ip = req.ip
+    let {email, password} = req.body
+
+    if(!attempts[ip]){
+        attempts[ip] = { count: 0, timestamp: Date.now()}
+    }
+
+    let currentTime = Date.now
+    let colapseTime = (currentTime - attempts[ip].timestamp)/1000
+
+    if(colapseTime > 60){
+        attempts[ip] = { count: 0, timestamp: Date.now()}
+    }
+
+    if(attempts[ip].count >= 5){
+        return res.status(404).json({ error: "Too many login attempts. Try again later." })
+    }
+
+    if(email === users.email && password === users.password){
+        attempts[ip] = { count: 0, timestamp: Date.now() }; 
+        const token = jwt.sign({ email }, 'secret_key', { expiresIn: '1h' });
+        return res.json({ success: true, token });
+    }
+
+    attempts[ip].count = attempts[ip].count + 1
+    res.status(400).json({error: "invalid credencials"})
+})
+
 module.exports = { app, getAllPakages, getPackagesByDestination, addNewBooking, updatePackageSlots, getAllBookingsByPackage }
